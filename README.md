@@ -1,4 +1,4 @@
-# Matali Demo — D1.5 (Palantir-grade ops console)
+# Matali Demo — D1.5 
 
 End-to-end Hindi emergency-call pipeline. Mocked transcript + NLU + HMM.
 Real map (Gadag geography, Leaflet + CartoDB dark tiles).
