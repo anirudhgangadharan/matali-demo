@@ -4,15 +4,19 @@ End-to-end Hindi emergency-call pipeline. Real HMM routing (matali.py ported to 
 
 ## Setup (Windows)
 
+```bash
 cd matali-demo
 python -m venv venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 venv\Scripts\activate
 pip install -r requirements.txt
+```
 
 ## Generate Hindi audio (one-time, needs internet)
 
+```bash
 python generate_audio.py
+```
 
 Creates 4 MP3s in `frontend/audio/`:
 - `ai_greeting.mp3` — AI answering call
@@ -22,7 +26,9 @@ Creates 4 MP3s in `frontend/audio/`:
 
 ## Run
 
+```bash
 python backend\app.py
+```
 
 ## Test
 
@@ -41,19 +47,21 @@ First-aid instructions appear on caller phone UI.
 
 ## Structure
 
+```
 matali-demo/
 ├── backend/
-│   ├── app.py      # FastAPI + WebSocket + pipeline orchestration
-│   └── hmm.py      # Hidden Markov Model — load-aware hospital routing
+│   ├── app.py          # FastAPI + WebSocket + pipeline orchestration
+│   └── hmm.py          # Hidden Markov Model — load-aware hospital routing
 ├── frontend/
 │   ├── caller.html     # Phone UI
 │   └── dashboard.html  # Operator console
 ├── generate_audio.py
 └── requirements.txt
+```
 
 ## D3 Checkpoint
 
-- Real HMM (backend/hmm.py) — load-dependent dynamic transition matrix, forward projection, capability scoring, severity-weighted utility function
+- Real HMM (`backend/hmm.py`) — load-dependent dynamic transition matrix, forward projection, capability scoring, severity-weighted utility function
 - SDM Medical Dharwad selected for red TBI via honest utility math — not hardcoded
 - Rejection sequence shows real utility scores; judge can ask "what was DH's score?" and get a real number
 - Pacing fixed — each hospital rejection readable at 1.2s, route line draws over 2s
