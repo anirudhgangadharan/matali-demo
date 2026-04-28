@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MĀTALI — Emergency Call</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg-deep:    #050810;
+  --bg:         #0a0f15;
+  --surface:    #0f1620;
+  --surface-2:  #141d29;
+  --border:     #1c2938;
+  --border-lit: #2d3f57;
+  --accent:     #ff6b1a;
+  --accent-dim: rgba(255,107,26,0.12);
+  --accent-glow:rgba(255,107,26,0.5);
+  --gold:       #d4a574;
+  --green:      #4ade80;
+  --red:        #f87171;
+  --text:       #e5edf4;
+  --text-2:     #8096ae;
+  --text-3:     #4a5b72;
+  --text-dim:   #2f3d52;
+  --mono:       'IBM Plex Mono', monospace;
+  --sans:       'IBM Plex Sans', sans-serif;
+  --cond:       'IBM Plex Sans Condensed', var(--sans);
+  --deva:       'Tiro Devanagari Hindi', 'Noto Sans Devanagari', serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background:
+    radial-gradient(ellipse at center top, rgba(255,107,26,0.04), transparent 60%),
+    linear-gradient(180deg, var(--bg-deep), var(--bg));
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.008) 0 1px, transparent 1px 3px);
+  z-index: 100;
+}
+
+/* Scanning lines down the edges */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255,107,26,0.04) 0%, transparent 8%, transparent 92%, rgba(255,107,26,0.04) 100%);
+  z-index: 99;
+}
+
+/* ──────────── PHONE FRAME ──────────── */
+.phone {
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border-lit);
+  border-radius: 18px;
+  padding: 0;
+  box-shadow:
+    0 30px 80px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(255,107,26,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Status bar on top */
+.status-bar {
+  background: var(--bg-deep);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+}
+.status-bar .left, .status-bar .right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.signal-bars {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+.signal-bars span {
+  width: 3px;
+  background: var(--text-2);
+}
+.signal-bars span:nth-child(1) { height: 4px; }
+.signal-bars span:nth-child(2) { height: 6px; }
+.signal-bars span:nth-child(3) { height: 8px; }
+.signal-bars span:nth-child(4) { height: 10px; opacity: 0.3; }
+
+/* Brand header */
+.head {
+  padding: 22px 22px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-family: var(--cond);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 3px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.dial-info {
+  padding: 14px 22px;
+  text-align: center;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 1.5px;
+}
+.dial-info b {
+  color: var(--accent);
+  font-size: 16px;
+  letter-spacing: 3px;
+  display: block;
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.call-status {
+  padding: 12px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  background: var(--bg);
+  min-height: 34px;
+}
+.call-status .dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.call-status.live .dot {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: sb 1.2s infinite;
+}
+@keyframes sb { 50% { opacity: 0.4; } }
+
+/* ──────────── CALL BUTTON ──────────── */
+.btn-wrap {
+  padding: 22px 0 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.call-btn {
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  border: none;
+  background: radial-gradient(circle at 30% 30%, var(--accent-2), var(--accent));
+  color: var(--bg-deep);
+  font-size: 34px;
+  cursor: pointer;
+  position: relative;
+  box-shadow:
+    0 0 0 2px var(--accent-dim),
+    0 10px 30px rgba(255,107,26,0.4);
+  transition: all 0.2s;
+}
+.call-btn:hover { transform: scale(1.04); }
+.call-btn:active { transform: scale(0.96); }
+.call-btn.active {
+  background: radial-gradient(circle at 30% 30%, #ff8888, var(--red));
+  box-shadow:
+    0 0 0 2px rgba(248,113,113,0.2),
+    0 10px 30px rgba(248,113,113,0.4);
+  animation: call-pulse 1.4s infinite;
+}
+@keyframes call-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(248,113,113,0.2), 0 0 0 0 rgba(248,113,113,0.5); }
+  50%      { box-shadow: 0 0 0 2px rgba(248,113,113,0.2), 0 0 0 18px rgba(248,113,113,0); }
+}
+
+.btn-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+}
+
+/* ──────────── AUDIO VISUALIZER ──────────── */
+.visualizer {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 20px;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+.visualizer.active { opacity: 1; }
+.visualizer .bar {
+  width: 3px;
+  background: var(--accent);
+  border-radius: 1px;
+  height: 4px;
+  transition: background 0.2s;
+}
+.visualizer.active .bar {
+  animation: viz 1s ease-in-out infinite;
+}
+.visualizer .bar:nth-child(1)  { animation-delay: 0.0s; }
+.visualizer .bar:nth-child(2)  { animation-delay: 0.1s; }
+.visualizer .bar:nth-child(3)  { animation-delay: 0.2s; }
+.visualizer .bar:nth-child(4)  { animation-delay: 0.3s; }
+.visualizer .bar:nth-child(5)  { animation-delay: 0.2s; }
+.visualizer .bar:nth-child(6)  { animation-delay: 0.1s; }
+.visualizer .bar:nth-child(7)  { animation-delay: 0.0s; }
+.visualizer .bar:nth-child(8)  { animation-delay: 0.1s; }
+.visualizer .bar:nth-child(9)  { animation-delay: 0.2s; }
+.visualizer .bar:nth-child(10) { animation-delay: 0.3s; }
+.visualizer .bar:nth-child(11) { animation-delay: 0.2s; }
+.visualizer .bar:nth-child(12) { animation-delay: 0.1s; }
+.visualizer .bar:nth-child(13) { animation-delay: 0.0s; }
+.visualizer .bar:nth-child(14) { animation-delay: 0.1s; }
+.visualizer .bar:nth-child(15) { animation-delay: 0.2s; }
+.visualizer .bar:nth-child(16) { animation-delay: 0.3s; }
+.visualizer .bar:nth-child(17) { animation-delay: 0.2s; }
+.visualizer .bar:nth-child(18) { animation-delay: 0.1s; }
+.visualizer .bar:nth-child(19) { animation-delay: 0.0s; }
+@keyframes viz {
+  0%, 100% { height: 4px; }
+  50%      { height: 28px; }
+}
+
+/* ──────────── SUBTITLE PANEL ──────────── */
+.panel {
+  margin: 0 16px 16px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-height: 82px;
+  position: relative;
+  overflow: hidden;
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--text-dim);
+  transition: background 0.3s;
+}
+.panel.ai-active::before { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.panel.user-active::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.panel-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.panel.ai-active .panel-label { color: var(--accent); }
+.panel.user-active .panel-label { color: var(--green); }
+
+.panel-tag {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+.sub-hi {
+  font-family: var(--deva), var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  margin-bottom: 4px;
+  min-height: 20px;
+}
+.sub-hi.empty { color: var(--text-dim); font-family: var(--sans); font-style: italic; font-size: 11px; }
+.sub-en {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--text-2);
+  font-style: italic;
+  line-height: 1.4;
+  border-top: 1px dashed var(--border);
+  padding-top: 5px;
+  min-height: 14px;
+}
+.sub-en.empty { color: var(--text-dim); }
+
+/* ──────────── FOOTER ──────────── */
+.footer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+}
+.footer a {
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 1.5px;
+}
+.footer a:hover { text-decoration: underline; }
+
+/* ──────────── HELPER TEXT OUTSIDE PHONE ──────────── */
+.side-note {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  text-align: center;
+  line-height: 1.6;
+}
+.side-note span { color: var(--text-3); }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <div class="status-bar">
+    <div class="left">
+      <span>1800-MATALI</span>
+    </div>
+    <div class="right">
+      <span class="signal-bars"><span></span><span></span><span></span><span></span></span>
+      <span>4G</span>
+      <span id="batt">87%</span>
+    </div>
+  </div>
+
+  <div class="head">
+    <div class="brand">MĀTALI</div>
+    <div class="sub">Emergency Assistant · मातली</div>
+  </div>
+
+  <div class="dial-info">
+    Calling <b>1800-MATALI</b>
+  </div>
+
+  <div class="call-status" id="callStatus">
+    <span class="dot"></span>Ready
+  </div>
+
+  <div class="btn-wrap">
+    <button class="call-btn" id="callBtn">📞</button>
+    <div class="btn-label" id="btnLabel">Tap to call</div>
+  </div>
+
+  <div class="visualizer" id="viz">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+
+  <div class="panel" id="subPanel">
+    <div class="panel-head">
+      <div class="panel-label" id="subLabel">मातली · AI OPERATOR</div>
+      <div class="panel-tag">hi-IN</div>
+    </div>
+    <div class="sub-hi empty" id="subHi">Subtitles will appear during call…</div>
+    <div class="sub-en empty" id="subEn">English translation</div>
+  </div>
+
+  <div class="footer">
+    <span>v0.1 · Gadag</span>
+    <a href="/dashboard" target="_blank">OPERATOR DASHBOARD →</a>
+  </div>
+
+</div>
+
+<div class="side-note">
+  <div>MĀTALI · रथाधिरूढः सर्वं पश्यति</div>
+  <div><span>One mounted upon the chariot perceives all</span></div>
+</div>
+
+<script>
+const $ = (q) => document.querySelector(q);
+
+let ws = null;
+let inCall = false;
+
+const callBtn = $('#callBtn');
+const btnLabel = $('#btnLabel');
+const callStatus = $('#callStatus');
+const viz = $('#viz');
+const subPanel = $('#subPanel');
+const subHi = $('#subHi');
+const subEn = $('#subEn');
+const subLabel = $('#subLabel');
+
+// ──────────── Audio playback ────────────
+const audioCache = {};
+function preload() {
+  ['ai_greeting','ai_ack','ai_firstaid','caller_scripted'].forEach(clip => {
+    const a = new Audio(`/audio/${clip}.mp3`);
+    a.preload = 'auto';
+    audioCache[clip] = a;
+  });
+}
+preload();
+
+let currentAudio = null;
+
+function playClip(clip) {
+  if (!clip) return null;
+  // Stop anything currently playing
+  if (currentAudio) { try { currentAudio.pause(); currentAudio.currentTime = 0; } catch(e){} }
+
+  // Fresh Audio element with absolute URL
+  const url = `/audio/${clip}.mp3`;
+  const inst = new Audio(url);
+  inst.preload = 'auto';
+  currentAudio = inst;
+
+  const playPromise = inst.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      console.warn(`Audio play failed for ${clip}:`, err.message);
+      fallbackTTS(clip);
+    });
+  }
+  return inst;
+}
+
+function fallbackTTS(clip) {
+  if (!window.speechSynthesis) return;
+  const texts = {
+    ai_greeting: "मातली सुन रहा है। क्या हुआ, बताइए।",
+    ai_ack:      "समझ गया। ambulance भेज दी है। घायल के पास रहिए।",
+    ai_firstaid: "गर्दन मत हिलाओ। साफ कपड़े से सिर के घाव पर दबाव डालो। अगर उल्टी हो तो सिर एक तरफ कर दो। लाइन पर बने रहो।",
+    caller_scripted: "हेलो! यहाँ accident हो गया है!"
+  };
+  const u = new SpeechSynthesisUtterance(texts[clip] || '');
+  u.lang = 'hi-IN';
+  u.rate = 0.92;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+// ──────────── UI helpers ────────────
+function showAISubtitle(hi, en) {
+  subPanel.classList.add('ai-active');
+  subPanel.classList.remove('user-active');
+  subLabel.textContent = 'मātali · AI OPERATOR';
+  viz.classList.add('active');
+
+  subHi.classList.remove('empty');
+  subEn.classList.remove('empty');
+  subHi.textContent = hi;
+  subEn.textContent = '→ ' + en;
+
+  // Keep visualizer on for ~3s (roughly until audio finishes)
+  clearTimeout(showAISubtitle._timer);
+  showAISubtitle._timer = setTimeout(() => {
+    viz.classList.remove('active');
+  }, 3500);
+}
+
+function showUserSubtitle() {
+  subPanel.classList.remove('ai-active');
+  subPanel.classList.add('user-active');
+  subLabel.textContent = 'CALLER · YOU';
+  viz.classList.add('active');
+
+  subHi.classList.remove('empty');
+  subEn.classList.remove('empty');
+  // Play the pre-recorded caller voice so judges hear the Hindi
+  playClip('caller_scripted');
+
+  // Show subtitle progressively (matching backend transcript_partial pacing)
+  // but backend also broadcasts to dashboard; we just show static here.
+  subHi.textContent = "हेलो! यहाँ accident हो गया है! गदग highway पर! आदमी bike से गिरा है, सिर से खून निकल रहा है, होश में नहीं है! जल्दी आओ भाई!";
+  subEn.textContent = '→ Hello! Accident here! Gadag highway! Man fell from bike, blood from head, not conscious! Come fast brother!';
+}
+
+// ──────────── WebSocket ────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/caller`);
+  ws.onopen = () => {
+    callStatus.innerHTML = '<span class="dot"></span>Ready';
+  };
+  ws.onclose = () => {
+    callStatus.innerHTML = '<span class="dot"></span>Disconnected — reconnecting';
+    setTimeout(connect, 1500);
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.stage === 'ai_speak') {
+      showAISubtitle(msg.hi, msg.en);
+      playClip(msg.clip);          // ← was missing
+    } else if (msg.stage === 'user_speaking') {
+      showUserSubtitle();
+    }
+  };
+}
+connect();
+
+// ──────────── Call button ────────────
+callBtn.addEventListener('click', () => {
+  if (inCall) {
+    inCall = false;
+    callBtn.classList.remove('active');
+    callBtn.textContent = '📞';
+    btnLabel.textContent = 'Tap to call';
+    callStatus.classList.remove('live');
+    callStatus.innerHTML = '<span class="dot"></span>Call ended';
+    viz.classList.remove('active');
+    return;
+  }
+
+  inCall = true;
+  callBtn.classList.add('active');
+  callBtn.textContent = '⏹';
+  btnLabel.textContent = 'Call in progress';
+  callStatus.classList.add('live');
+  callStatus.innerHTML = '<span class="dot"></span>Connected — line secure';
+
+  subHi.classList.add('empty');
+  subEn.classList.add('empty');
+  subHi.textContent = 'Subtitles will appear during call…';
+  subEn.textContent = 'English translation';
+
+  ws.send(JSON.stringify({ action: 'call_start' }));
+});
+</script>
+
+</body>
+</html>

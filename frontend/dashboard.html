@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MĀTALI OPS — Emergency Command</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   MATALI OPS — Palantir / Anduril-grade defense-tech console
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg-deep:    #050810;
+  --bg:         #0a0f15;
+  --surface:    #0f1620;
+  --surface-2:  #141d29;
+  --surface-3:  #1a2433;
+  --border:     #1c2938;
+  --border-lit: #2d3f57;
+
+  --accent:     #ff6b1a;    /* signal orange */
+  --accent-2:   #ffa163;
+  --accent-dim: rgba(255, 107, 26, 0.12);
+  --accent-glow:rgba(255, 107, 26, 0.45);
+
+  --gold:       #d4a574;    /* brand gold, logo only */
+  --amber:      #fbbf24;
+  --green:      #4ade80;
+  --red:        #f87171;
+  --blue:       #60a5fa;
+  --violet:     #a78bfa;
+
+  --text:       #e5edf4;
+  --text-2:     #8096ae;
+  --text-3:     #4a5b72;
+  --text-dim:   #2f3d52;
+
+  --mono:       'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+  --sans:       'IBM Plex Sans', -apple-system, sans-serif;
+  --cond:       'IBM Plex Sans Condensed', var(--sans);
+  --deva:       'Tiro Devanagari Hindi', 'Noto Sans Devanagari', serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background:
+    radial-gradient(ellipse at top, rgba(255, 107, 26, 0.03), transparent 60%),
+    linear-gradient(180deg, var(--bg-deep), var(--bg));
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.008) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.005) 0 1px, transparent 1px 3px);
+  z-index: 9999;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: 48px 38px 1fr 200px 68px;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ───────────────────────── HEADER ───────────────────────── */
+.header {
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 24px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--cond);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--gold);
+}
+.brand .sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 2px;
+  font-weight: 400;
+}
+.hdr-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px;
+  border-left: 1px solid var(--border);
+}
+.hdr-chip .k { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1.5px; }
+.hdr-chip .v { color: var(--text); font-weight: 500; }
+.hdr-chip .v.accent { color: var(--accent); }
+.hdr-chip .v.green { color: var(--green); }
+.hdr-chip.grow { flex-grow: 1; align-items: flex-end; }
+
+.status-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  margin-right: 5px;
+  animation: pulse-dot 1.5s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ───────────────────────── EVENT LOG ───────────────────────── */
+.log {
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+  height: 38px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 14px;
+}
+.log-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 2px;
+  font-weight: 600;
+  padding-right: 14px;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.log-stream {
+  flex-grow: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  position: relative;
+  height: 100%;
+}
+.log-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  animation: log-enter 0.3s ease-out;
+  flex-shrink: 0;
+}
+@keyframes log-enter {
+  from { opacity: 0; transform: translateX(15px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.log-entry .ts { color: var(--text-3); }
+.log-entry .ch {
+  color: var(--accent);
+  font-weight: 600;
+  padding: 1px 6px;
+  background: var(--accent-dim);
+  border-radius: 2px;
+  font-size: 10px;
+}
+.log-entry .ch.ok    { color: var(--green); background: rgba(74, 222, 128, 0.12); }
+.log-entry .ch.warn  { color: var(--amber); background: rgba(251, 191, 36, 0.12); }
+.log-entry .tx { color: var(--text-2); }
+
+/* ───────────────────────── MAIN GRID ───────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+/* MAP pane */
+.pane-map {
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+#map {
+  width: 100%;
+  height: 100%;
+}
+.map-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-3);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.map-overlay b { color: var(--text-2); }
+.map-crosshair-tl, .map-crosshair-tr, .map-crosshair-bl, .map-crosshair-br {
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--accent);
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.map-crosshair-tl { top: 8px; left: 8px;  border-top: 2px solid; border-left: 2px solid; }
+.map-crosshair-tr { top: 8px; right: 8px; border-top: 2px solid; border-right: 2px solid; }
+.map-crosshair-bl { bottom: 8px; left: 8px;  border-bottom: 2px solid; border-left: 2px solid; }
+.map-crosshair-br { bottom: 8px; right: 8px; border-bottom: 2px solid; border-right: 2px solid; }
+
+/* Leaflet overrides for dark mode */
+.leaflet-container { background: #0a0f15 !important; font-family: var(--mono); }
+.leaflet-control-attribution {
+  background: rgba(10,15,21,0.7) !important;
+  color: var(--text-3) !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a { color: var(--text-2) !important; }
+
+/* SIDE pane */
+.pane-side {
+  background: var(--bg);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 1px;
+  background: var(--border);
+  overflow: hidden;
+}
+.panel {
+  background: var(--bg);
+  padding: 14px 16px;
+  overflow: hidden;
+}
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.panel-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.panel-title::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent);
+}
+.panel-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+}
+
+/* Extraction panel — JSON style */
+.ext-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.ext-k { color: var(--text-3); }
+.ext-v { color: var(--text); font-weight: 500; }
+.ext-v.null { color: var(--text-dim); }
+.ext-v .sev-red    { color: var(--red); font-weight: 700; background: rgba(248,113,113,0.1); padding: 0 6px; border-radius: 2px; }
+.ext-v .sev-yellow { color: var(--amber); font-weight: 700; }
+.ext-v .sev-green  { color: var(--green); font-weight: 700; }
+.ext-v.coords { color: var(--accent); }
+
+/* Transcript panel */
+.transcript {
+  font-family: var(--deva), var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  min-height: 40px;
+  margin-bottom: 8px;
+}
+.transcript.empty { color: var(--text-dim); font-style: italic; font-family: var(--sans); font-size: 12px; }
+.transcript .cursor {
+  display: inline-block;
+  width: 7px; height: 14px;
+  background: var(--accent);
+  margin-left: 3px;
+  vertical-align: middle;
+  animation: cursor-blink 0.8s infinite;
+}
+@keyframes cursor-blink { 50% { opacity: 0.15; } }
+.transcript-en {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-2);
+  font-style: italic;
+  line-height: 1.5;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+  min-height: 20px;
+}
+.transcript-en.empty { color: var(--text-dim); }
+
+/* AI speech panel */
+.ai-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ai-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  margin-top: 6px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.ai-indicator.active {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: ai-pulse 1s infinite;
+}
+@keyframes ai-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.5); }
+}
+.ai-body { flex-grow: 1; min-height: 40px; }
+.ai-body .hi {
+  font-family: var(--deva), var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.ai-body .en {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--text-2);
+  font-style: italic;
+  margin-top: 3px;
+}
+.ai-body.empty { color: var(--text-dim); font-style: italic; font-size: 11px; }
+
+/* ───────────────────────── THREADS ───────────────────────── */
+.threads {
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.threads-head {
+  padding: 10px 18px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.threads-head .title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 2.5px;
+  font-weight: 600;
+}
+.threads-head .badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-3);
+  letter-spacing: 1.5px;
+}
+.threads-head .badge.active {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(251, 191, 36, 0.08);
+}
+.threads-head .badge.done {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(74, 222, 128, 0.08);
+}
+.threads-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  flex-grow: 1;
+  overflow: hidden;
+}
+.thread {
+  background: var(--bg);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 2px solid var(--border);
+  transition: border-color 0.3s, background 0.3s, opacity 0.4s;
+  overflow: hidden;
+}
+.thread.running {
+  border-top-color: var(--amber);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.04), var(--bg));
+}
+.thread.done {
+  border-top-color: var(--green);
+}
+
+/* When body has .route-focus, dim every thread card EXCEPT the route one */
+body.route-focus .thread:not([data-t="route"]) {
+  opacity: 0.35;
+  filter: grayscale(0.4);
+}
+.thread-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--text-3);
+}
+.thread .title { color: var(--text-2); font-weight: 600; text-transform: uppercase; }
+.thread.running .title { color: var(--amber); }
+.thread.done .title { color: var(--green); }
+.thread .timer { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.thread-body {
+  flex-grow: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-2);
+  overflow: hidden;
+}
+.thread-body.waiting { font-style: italic; color: var(--text-dim); }
+.kv-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.kv-line .k { color: var(--text-3); }
+.kv-line .v { color: var(--text); font-weight: 500; }
+.kv-line .v.big { color: var(--accent); font-size: 12px; font-weight: 600; }
+.kv-line .v.ok { color: var(--green); }
+.reason {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--text-3);
+  font-style: italic;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+  line-height: 1.4;
+}
+.spinner {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ───────────────────────── SUMMARY RIBBON ───────────────────────── */
+.summary {
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border-lit);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.summary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent-dim), transparent);
+  pointer-events: none;
+  opacity: 0.4;
+}
+.sum-cell {
+  background: var(--bg-deep);
+  padding: 10px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.sum-cell .k {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.sum-cell .v {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sum-cell .v.accent { color: var(--accent); }
+.sum-cell .v.green  { color: var(--green); }
+.sum-cell .v.red    { color: var(--red); }
+.sum-cell .v.small  { font-size: 13px; font-weight: 500; }
+.sum-cell .sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+}
+.sum-cell .sub.win { color: var(--green); }
+
+/* ───────────────────────── CUSTOM LEAFLET MARKERS ───────────────────────── */
+.hosp-marker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 0.4s, filter 0.4s;
+}
+.hosp-marker .pin {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-2);
+  border: 2px solid var(--bg-deep);
+  box-shadow: 0 0 0 1px var(--text-2);
+}
+.hosp-marker .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-2);
+  margin-top: 3px;
+  background: rgba(10, 15, 21, 0.85);
+  padding: 1px 5px;
+  border-radius: 2px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+.hosp-marker.rejected {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+.hosp-marker.selected .pin {
+  background: var(--green);
+  box-shadow: 0 0 0 2px var(--green), 0 0 14px var(--green);
+  animation: sel-pulse 1.3s infinite;
+}
+.hosp-marker.selected .label {
+  color: var(--green);
+  font-weight: 700;
+  border: 1px solid var(--green);
+}
+@keyframes sel-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--green), 0 0 14px var(--green); }
+  50% { box-shadow: 0 0 0 5px rgba(74,222,128,0.25), 0 0 22px var(--green); }
+}
+
+.caller-marker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.caller-marker .pin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--bg-deep);
+  box-shadow: 0 0 0 2px var(--red), 0 0 18px var(--red);
+  animation: caller-pulse 1.2s infinite;
+}
+@keyframes caller-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 18px var(--red); }
+  50% { box-shadow: 0 0 0 6px rgba(248,113,113,0.25), 0 0 26px var(--red); }
+}
+.caller-marker .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--red);
+  margin-top: 3px;
+  letter-spacing: 0.5px;
+  background: rgba(10,15,21,0.85);
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid var(--red);
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER ────────────────────────────────────────── -->
+  <div class="header">
+    <div class="brand">MĀTALI <span class="sub">OPS · v0.1</span></div>
+    <div class="hdr-chip"><span class="k">Incident</span><span class="v" id="hdr-incident">—</span></div>
+    <div class="hdr-chip"><span class="k">Region</span><span class="v">KA · Gadag</span></div>
+    <div class="hdr-chip"><span class="k">Time</span><span class="v" id="hdr-time">--:--:--</span></div>
+    <div class="hdr-chip"><span class="k">Session</span><span class="v" id="hdr-session">T+0.0s</span></div>
+    <div class="hdr-chip grow"><span class="k">System</span><span class="v green" id="hdr-status"><span class="status-dot"></span>LIVE</span></div>
+  </div>
+
+  <!-- EVENT LOG ─────────────────────────────────────── -->
+  <div class="log">
+    <div class="log-label">EVENT LOG</div>
+    <div class="log-stream" id="logStream"></div>
+  </div>
+
+  <!-- MAIN ──────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- MAP -->
+    <div class="pane-map">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <div><b>KARNATAKA</b> · GADAG DISTRICT</div>
+        <div style="margin-top:2px">AOI · 15.20°–15.48°N · 75.00°–75.89°E</div>
+      </div>
+      <div class="map-crosshair-tl"></div>
+      <div class="map-crosshair-tr"></div>
+      <div class="map-crosshair-bl"></div>
+      <div class="map-crosshair-br"></div>
+    </div>
+
+    <!-- SIDE -->
+    <div class="pane-side">
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Extracted Payload</div>
+          <div class="panel-tag" id="ext-tag">awaiting</div>
+        </div>
+        <div class="ext-grid" id="extGrid">
+          <div class="ext-k">location</div>        <div class="ext-v null">—</div>
+          <div class="ext-k">coords</div>          <div class="ext-v null">—</div>
+          <div class="ext-k">injury_type</div>     <div class="ext-v null">—</div>
+          <div class="ext-k">severity</div>        <div class="ext-v null">—</div>
+          <div class="ext-k">mechanism</div>       <div class="ext-v null">—</div>
+          <div class="ext-k">vitals</div>          <div class="ext-v null">—</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Caller Transcript</div>
+          <div class="panel-tag">hi-IN · ASR</div>
+        </div>
+        <div class="transcript empty" id="transcriptHi">Awaiting caller speech…</div>
+        <div class="transcript-en empty" id="transcriptEn">English translation will appear here</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">AI Operator</div>
+          <div class="panel-tag">TTS · hi-IN-Swara</div>
+        </div>
+        <div class="ai-msg">
+          <div class="ai-indicator" id="aiDot"></div>
+          <div class="ai-body empty" id="aiBody">Standing by…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- THREADS ─────────────────────────────────────── -->
+  <div class="threads">
+    <div class="threads-head">
+      <div class="title">PARALLEL RESPONSE THREADS</div>
+      <div class="badge" id="threadsBadge">IDLE</div>
+    </div>
+    <div class="threads-row">
+      <div class="thread" data-t="route">
+        <div class="thread-head"><span class="title">① HMM · ROUTE</span><span class="timer" data-timer></span></div>
+        <div class="thread-body waiting" data-body>Awaiting extraction</div>
+      </div>
+      <div class="thread" data-t="firstaid">
+        <div class="thread-head"><span class="title">② LLM · FIRST AID</span><span class="timer" data-timer></span></div>
+        <div class="thread-body waiting" data-body>Awaiting extraction</div>
+      </div>
+      <div class="thread" data-t="dispatch">
+        <div class="thread-head"><span class="title">③ EMRI 108 · DISPATCH</span><span class="timer" data-timer></span></div>
+        <div class="thread-body waiting" data-body>Awaiting extraction</div>
+      </div>
+      <div class="thread" data-t="eralert">
+        <div class="thread-head"><span class="title">④ HL7 · ER PRE-ALERT</span><span class="timer" data-timer></span></div>
+        <div class="thread-body waiting" data-body>Awaiting extraction</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY ─────────────────────────────────────── -->
+  <div class="summary">
+    <div class="sum-cell">
+      <div class="k">Matali · Total</div>
+      <div class="v accent" id="sumTotal">—</div>
+      <div class="sub">end-to-end, call → dispatched</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">Hospital</div>
+      <div class="v small" id="sumHosp">—</div>
+      <div class="sub" id="sumHospTier">—</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">Ambulance ETA</div>
+      <div class="v green" id="sumEta">—</div>
+      <div class="sub">crew + unit dispatched</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">108 Baseline</div>
+      <div class="v" style="color:var(--text-2)">~3 hr</div>
+      <div class="sub">call → hospital arrival (Antony 2021)</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">Time Saved</div>
+      <div class="v green" id="sumSaved">—</div>
+      <div class="sub win" id="sumWin">estimate</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// MATALI OPS DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+const $ = (q) => document.querySelector(q);
+const $$ = (q) => document.querySelectorAll(q);
+
+let ws, callT0 = null, clockInt = null;
+let hospitals = [], accident = null;
+let hospitalMarkers = {}, callerMarker = null, routeLine = null, routeAnimInt = null;
+
+// ──────────── Wall-clock tick (always running) ────────────
+setInterval(() => {
+  $('#hdr-time').textContent = new Date().toTimeString().slice(0, 8);
+}, 500);
+
+// ──────────── Map init ────────────────────────────────────
+const map = L.map('map', {
+  center: [15.37, 75.45],
+  zoom: 9,
+  zoomControl: false,
+  attributionControl: true,
+  preferCanvas: true,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+  attribution: '',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+// Remove zoom control, add scale
+L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+
+function renderHospitalMarkers(list) {
+  Object.values(hospitalMarkers).forEach(m => map.removeLayer(m));
+  hospitalMarkers = {};
+  list.forEach(h => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="hosp-marker" id="hm-${h.id}">
+               <div class="pin"></div>
+               <div class="label">${h.short} · T${h.tier}</div>
+             </div>`,
+      iconSize: [60, 40],
+      iconAnchor: [30, 8],
+    });
+    const m = L.marker(h.coords, { icon }).addTo(map);
+    hospitalMarkers[h.id] = m;
+  });
+}
+
+function renderCallerMarker(acc) {
+  if (callerMarker) map.removeLayer(callerMarker);
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="caller-marker">
+             <div class="pin"></div>
+             <div class="label">INCIDENT · ${acc.label}</div>
+           </div>`,
+    iconSize: [220, 50],
+    iconAnchor: [110, 9],
+  });
+  callerMarker = L.marker(acc.coords, { icon }).addTo(map);
+}
+
+function markHospitalRejected(hid) {
+  const el = document.getElementById('hm-' + hid);
+  if (el) el.classList.add('rejected');
+}
+
+function markHospitalSelected(hid) {
+  const el = document.getElementById('hm-' + hid);
+  if (el) el.classList.add('selected');
+}
+
+function drawRoute(hid) {
+  const h = hospitals.find(x => x.id === hid);
+  if (!h || !accident) return;
+  const from = accident.coords, to = h.coords;
+  routeLine = L.polyline([from, from], {
+    color: '#ff6b1a', weight: 2.5, opacity: 0.9,
+    dashArray: '6, 8', lineCap: 'round',
+  }).addTo(map);
+
+  // Animate: interpolate second point from `from` to `to`
+  // Slowed for readability — ~2.1s instead of ~1.1s.
+  let progress = 0;
+  const steps = 60;
+  clearInterval(routeAnimInt);
+  routeAnimInt = setInterval(() => {
+    progress++;
+    const p = progress / steps;
+    const lat = from[0] + (to[0] - from[0]) * p;
+    const lng = from[1] + (to[1] - from[1]) * p;
+    routeLine.setLatLngs([from, [lat, lng]]);
+    if (progress >= steps) {
+      clearInterval(routeAnimInt);
+      // Fit bounds to accident + hospital
+      map.fitBounds(L.latLngBounds(from, to).pad(0.3), { duration: 1.0 });
+    }
+  }, 35);
+}
+
+// ──────────── WebSocket connection ────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/dashboard`);
+  ws.onopen = () => {
+    $('#hdr-status').innerHTML = '<span class="status-dot"></span>LIVE';
+  };
+  ws.onclose = () => {
+    $('#hdr-status').innerHTML = '<span class="status-dot" style="background:#f87171;box-shadow:0 0 6px #f87171"></span>OFFLINE';
+    setTimeout(connect, 1500);
+  };
+  ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
+}
+connect();
+
+// ──────────── Session clock ───────────────────────────────
+function startSessionClock() {
+  callT0 = performance.now();
+  clearInterval(clockInt);
+  clockInt = setInterval(() => {
+    $('#hdr-session').textContent = 'T+' + ((performance.now() - callT0) / 1000).toFixed(1) + 's';
+  }, 50);
+}
+function stopSessionClock() {
+  clearInterval(clockInt);
+}
+
+// ──────────── Event Log ───────────────────────────────────
+const MAX_LOG = 8;
+function pushLog(ts, channel, text, level) {
+  const stream = $('#logStream');
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  const chCls = (level === 'ok' || level === 'warn') ? ' ' + level : '';
+  el.innerHTML = `<span class="ts">[${ts.slice(-8)}]</span><span class="ch${chCls}">${channel}</span><span class="tx">${text}</span>`;
+  stream.appendChild(el);
+  while (stream.children.length > MAX_LOG) stream.removeChild(stream.firstChild);
+  stream.scrollLeft = stream.scrollWidth;
+}
+
+// ──────────── Extraction panel ────────────────────────────
+function fillExtraction(d) {
+  const grid = $('#extGrid');
+  grid.innerHTML = '';
+  const rows = [
+    ['location', d.location],
+    ['coords',   `[${d.coords[0]}, ${d.coords[1]}]`],
+    ['injury_type', d.injury_type],
+    ['severity', `<span class="sev-${d.severity}">${d.severity.toUpperCase()}</span>`],
+    ['mechanism', d.mechanism],
+    ['vitals', d.vitals.join(' · ')],
+  ];
+  rows.forEach(([k, v]) => {
+    const kEl = document.createElement('div'); kEl.className = 'ext-k'; kEl.textContent = k;
+    const vEl = document.createElement('div'); vEl.className = 'ext-v' + (k==='coords' ? ' coords' : '');
+    vEl.innerHTML = v;
+    grid.appendChild(kEl); grid.appendChild(vEl);
+  });
+  $('#ext-tag').textContent = 'resolved';
+  $('#ext-tag').style.color = 'var(--green)';
+}
+
+// ──────────── AI speech panel ─────────────────────────────
+function playAIAudio(clip) {
+  const url = `/audio/${clip}.mp3`;
+  const audio = new Audio(url);
+  audio.onerror = () => {
+    // Fallback: browser SpeechSynthesis
+    const hiText = $('#aiBody .hi')?.textContent || '';
+    if (!hiText || !window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(hiText);
+    u.lang = 'hi-IN';
+    u.rate = 0.95;
+    speechSynthesis.speak(u);
+  };
+  audio.play().catch(() => {});
+}
+
+function showAISpeech(hi, en, clip) {
+  $('#aiBody').classList.remove('empty');
+  $('#aiBody').innerHTML = `<div class="hi">${hi}</div><div class="en">${en}</div>`;
+  $('#aiDot').classList.add('active');
+  setTimeout(() => $('#aiDot').classList.remove('active'), 3000);
+  if (clip) playAIAudio(clip);
+}
+
+// ──────────── Threads ─────────────────────────────────────
+function setThread(name, state, bodyHTML, elapsed) {
+  const el = document.querySelector(`.thread[data-t="${name}"]`);
+  if (!el) return;
+  el.classList.remove('running', 'done');
+  if (state === 'running') el.classList.add('running');
+  if (state === 'done')    el.classList.add('done');
+  const body = el.querySelector('[data-body]');
+  if (bodyHTML !== undefined) { body.innerHTML = bodyHTML; body.classList.remove('waiting'); }
+  const timer = el.querySelector('[data-timer]');
+  if (state === 'running') timer.innerHTML = '<span class="spinner"></span>';
+  else if (state === 'done') timer.innerHTML = `✓ ${elapsed}s`;
+}
+
+function formatRoute(r) {
+  return `
+    <div class="kv-line"><span class="k">hospital</span><span class="v big">${r.hospital_id}</span></div>
+    <div class="kv-line"><span class="k">eta</span><span class="v">${r.eta_min} min</span></div>
+    <div class="kv-line"><span class="k">utility</span><span class="v">${r.utility.toFixed(3)}</span></div>
+    <div class="kv-line"><span class="k">P(Avail)</span><span class="v">${r.p_available.toFixed(2)}</span></div>
+    <div class="reason">${r.reason}</div>
+  `;
+}
+function formatDispatch(r) {
+  return `
+    <div class="kv-line"><span class="k">unit</span><span class="v big">${r.unit_id}</span></div>
+    <div class="kv-line"><span class="k">pickup ETA</span><span class="v">${r.eta_pickup_min} min</span></div>
+    <div class="kv-line"><span class="k">crew</span><span class="v">${r.crew}</span></div>
+    <div class="reason">dispatched from ${r.dispatched_from}</div>
+  `;
+}
+function formatEralert(r) {
+  return `
+    <div class="kv-line"><span class="k">handoff</span><span class="v ok">✓ sent</span></div>
+    <div class="kv-line"><span class="k">trauma team</span><span class="v ok">✓ activated</span></div>
+    <div class="kv-line"><span class="k">blood</span><span class="v">${r.blood_preordered}</span></div>
+    <div class="kv-line"><span class="k">CT scanner</span><span class="v ok">✓ reserved</span></div>
+  `;
+}
+function formatFirstaid(r) {
+  return `<div style="font-family:var(--deva);font-size:11px;line-height:1.5;color:var(--text);margin-bottom:4px">${r.hi}</div>
+          <div class="reason">${r.en}</div>`;
+}
+
+// ──────────── Reset ───────────────────────────────────────
+function resetDashboard() {
+  $('#transcriptHi').classList.add('empty');
+  $('#transcriptHi').textContent = 'Awaiting caller speech…';
+  $('#transcriptEn').classList.add('empty');
+  $('#transcriptEn').textContent = 'English translation will appear here';
+  $('#aiBody').classList.add('empty');
+  $('#aiBody').innerHTML = 'Standing by…';
+  $('#aiDot').classList.remove('active');
+
+  const grid = $('#extGrid');
+  grid.innerHTML = [
+    ['location','—'],['coords','—'],['injury_type','—'],['severity','—'],
+    ['mechanism','—'],['vitals','—'],
+  ].map(([k, v]) => `<div class="ext-k">${k}</div><div class="ext-v null">${v}</div>`).join('');
+  $('#ext-tag').textContent = 'awaiting';
+  $('#ext-tag').style.color = '';
+
+  ['route','firstaid','dispatch','eralert'].forEach(n => {
+    const el = document.querySelector(`.thread[data-t="${n}"]`);
+    el.classList.remove('running','done');
+    el.querySelector('[data-body]').classList.add('waiting');
+    el.querySelector('[data-body]').textContent = 'Awaiting extraction';
+    el.querySelector('[data-timer]').innerHTML = '';
+  });
+
+  $('#threadsBadge').textContent = 'IDLE';
+  $('#threadsBadge').className = 'badge';
+
+  $('#sumTotal').textContent = '—';
+  $('#sumHosp').textContent = '—';
+  $('#sumHospTier').textContent = '—';
+  $('#sumEta').textContent = '—';
+  $('#sumSaved').textContent = '—';
+  $('#sumWin').textContent = 'estimate';
+
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+  clearInterval(routeAnimInt);
+  Object.keys(hospitalMarkers).forEach(hid => {
+    const el = document.getElementById('hm-' + hid);
+    if (el) el.classList.remove('rejected', 'selected');
+  });
+  document.body.classList.remove('route-focus');
+}
+
+// ──────────── Event handler ───────────────────────────────
+function handleEvent(msg) {
+  switch (msg.stage) {
+    case 'log':
+      pushLog(msg.ts, msg.channel, msg.text, msg.level);
+      break;
+
+    case 'call_received':
+      resetDashboard();
+      startSessionClock();
+      $('#hdr-incident').textContent = msg.incident_id;
+      hospitals = msg.hospitals;
+      accident = msg.accident;
+      renderHospitalMarkers(hospitals);
+      renderCallerMarker(accident);
+      map.flyTo([15.37, 75.45], 9, { duration: 0.8 });
+      break;
+
+    case 'transcript_partial':
+      $('#transcriptHi').classList.remove('empty');
+      $('#transcriptHi').innerHTML = msg.hi + '<span class="cursor"></span>';
+      break;
+
+    case 'transcript_final':
+      $('#transcriptHi').innerHTML = msg.hi;
+      $('#transcriptEn').classList.remove('empty');
+      $('#transcriptEn').textContent = '→ ' + msg.en;
+      break;
+
+    case 'extracted':
+      fillExtraction(msg.data);
+      break;
+
+    case 'threads_start':
+      $('#threadsBadge').textContent = '4 THREADS · PARALLEL';
+      $('#threadsBadge').className = 'badge active';
+      break;
+
+    case 'thread_running':
+      setThread(msg.thread, 'running', 'Processing…');
+      // Dim non-route cards while HMM rejection sequence plays
+      if (msg.thread === 'route') document.body.classList.add('route-focus');
+      break;
+
+    case 'hospital_rejected':
+      markHospitalRejected(msg.hospital_id);
+      break;
+
+    case 'hospital_selected':
+      markHospitalSelected(msg.hospital_id);
+      drawRoute(msg.hospital_id);
+      // Restore other thread cards now that the routing decision is locked
+      document.body.classList.remove('route-focus');
+      break;
+
+    case 'thread_done': {
+      const r = msg.result;
+      let html = '';
+      if (msg.thread === 'route') {
+        html = formatRoute(r);
+        $('#sumHosp').textContent = r.hospital_id;
+        $('#sumHospTier').textContent = 'Tier-' + (r.tier || '?') + ' · ' + r.eta_min + ' min';
+      } else if (msg.thread === 'dispatch') {
+        html = formatDispatch(r);
+        $('#sumEta').textContent = r.eta_pickup_min + ' min';
+      } else if (msg.thread === 'eralert') {
+        html = formatEralert(r);
+      } else if (msg.thread === 'firstaid') {
+        html = formatFirstaid(r);
+      }
+      setThread(msg.thread, 'done', html, msg.elapsed);
+      break;
+    }
+
+    case 'ai_speak':
+      showAISpeech(msg.hi, msg.en, msg.clip);
+      break;
+
+    case 'complete': {
+      stopSessionClock();
+      const total = ((performance.now() - callT0) / 1000);
+      $('#sumTotal').textContent = total.toFixed(1) + 's';
+
+      // 108 baseline = 180 min. Matali saves 180 - (22 eta + ~0.3 min pipeline) ≈ 157 min
+      const saved_min = 180 - 22;
+      $('#sumSaved').textContent = saved_min + ' min';
+      $('#sumWin').textContent = '≈ 87% reduction · pre-hospital phase';
+
+      $('#threadsBadge').textContent = 'DISPATCHED';
+      $('#threadsBadge').className = 'badge done';
+      break;
+    }
+  }
+}
+</script>
+
+</body>
+</html>
